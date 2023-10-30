@@ -26,6 +26,7 @@ public:
     virtual Point2D getSecondDerivative(double t) = 0;
     virtual double get_t_at_arc_length(double arc_length) = 0;
     virtual double getCurvature(double t) = 0;
+    virtual double getCurvature(Point2D d, Point2D dd) = 0;
 };
 
 class CubicBezier : public virtualPath
@@ -43,6 +44,7 @@ public:
     double get_t_at_arc_length(double arc_length);
     double getLength();
     double getCurvature(double t);
+    double getCurvature(Point2D d, Point2D dd);
 
 private:
     Point2D p0;
@@ -128,7 +130,6 @@ class TrapezoidalProfile
 public:
     TrapezoidalProfile(Constraints *constraints, double length, double start_vel = 0, double end_vel = 0);
     double get_vel_at_dist(double dist);
-    double get_accel_at_dist(double dist);
 
 private:
     Constraints *constraints;

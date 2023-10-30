@@ -83,7 +83,7 @@ void opcontrol()
 	double maxSpeed = 600 * 0.5 / 60 * 4 * M_PI;
 
 	const double delta_d = 0.1;
-	const int sample_points = 1000;
+	const int sample_points = 0;
 	const int benchmark_samples = 100;
 
 	// Test Motion Profile
@@ -112,7 +112,7 @@ void opcontrol()
 	// {
 	// 	std::cout << i << " " << profile[i].dist << "," << profile[i].vel << std::endl;
 	// }
-	// std::cout << testPath->getLength() << std::endl;
+
 	std::cout << "t,dist,vel,curvature" << std::endl;
 
 	while (1)

@@ -1,5 +1,6 @@
 #include "motion_profiling.hpp"
 #include <iostream>
+
 CubicBezier::CubicBezier(const Point2D &p0, const Point2D &p1, const Point2D &p2, const Point2D &p3, int length)
 {
     this->p0 = p0;
@@ -15,23 +16,6 @@ CubicBezier::CubicBezier(const Point2D &p0, const Point2D &p1, const Point2D &p2
 
     this->len = length;
     this->lengths = std::vector<double>(this->len + 1, 0);
-
-    double ox = this->getPoint(0).x;
-    double oy = this->getPoint(0).y;
-    double clen = 0;
-    int t = 0;
-    for (int i = 0; i <= this->len; ++i)
-    {
-        auto xy = this->getPoint(i / double(this->len));
-        double dx = ox - xy.x;
-        double dy = oy - xy.y;
-        clen += std::sqrt(dx * dx + dy * dy);
-        this->lengths[i] = clen;
-        ox = xy.x;
-        oy = xy.y;
-        ++t;
-    }
-    this->length = clen;
 
     this->coefficients << -1, 3, -3, 1,
         3, -6, 3, 0,
@@ -115,6 +99,12 @@ double CubicBezier::getCurvature(double t)
     return k;
 }
 
+double CubicBezier::getCurvature(Point2D d, Point2D dd)
+{
+    double k = (d.x * dd.y - d.y * dd.x) / std::pow(d.x * d.x + d.y * d.y, 1.5);
+    return k;
+}
+
 ProfilePoint::ProfilePoint(double x, double y, double theta, double curvature, double t, double vel, double accel)
 {
     this->x = x;
@@ -145,6 +135,7 @@ double Constraints::maxSpeed(double curvature)
     double max_turn_speed = ((2 * this->max_vel / this->track_width) * this->max_vel) / (fabs(curvature) * this->max_vel + (2 * this->max_vel / this->track_width));
     if (curvature == 0)
         return max_turn_speed;
+    // double max_slip_speed = 100000000;
     double max_slip_speed = sqrt(this->friction_coef * (1 / abs(curvature)) * 9.81 * 39.3701);
     return std::min(max_slip_speed, max_turn_speed);
 }
@@ -193,30 +184,6 @@ double TrapezoidalProfile::get_vel_at_dist(double dist)
         return std::sqrt(this->cruise_vel * this->cruise_vel + 2 * -this->constraints->max_dec * (dist - this->decel_dist));
     }
 }
-double TrapezoidalProfile::get_accel_at_dist(double dist)
-{
-    if (dist < 0)
-    {
-        dist = 0;
-    }
-    if (dist > this->length)
-    {
-        dist = this->length;
-    }
-
-    if (dist < this->accel_dist)
-    {
-        return this->constraints->max_acc;
-    }
-    else if (dist < this->decel_dist)
-    {
-        return 0;
-    }
-    else
-    {
-        return -this->constraints->max_dec;
-    }
-}
 
 ProfileGenerator::ProfileGenerator(Constraints *constraints, double dd)
 {
@@ -228,32 +195,72 @@ void ProfileGenerator::generateProfile(virtualPath *path)
 {
 
     this->profile.clear();
-    double length = path->getLength();
-    double t = 0;
     double dist = this->dd;
 
     double vel = 0.00001;
-    double last_angular_vel = 0;
-    double angular_vel = 0;
-    double angular_accel = 0;
 
-    auto linearProfile = TrapezoidalProfile(this->constraints, path->getLength(), 0, 0);
+    std::vector<ProfilePoint> forwardPass;
+    std::vector<ProfilePoint> backwardPass;
 
-    while (dist <= length)
+    forwardPass.push_back(ProfilePoint(0, 0));
+    backwardPass.push_back(ProfilePoint(0, 0));
+
+    double t = 0;
+    double curvature;
+    double angular_vel;
+    double angular_accel;
+    double last_angular_vel;
+    double max_accel;
+    Point2D deriv;
+    Point2D derivSecond;
+    while (t <= 1)
     {
-        double t = path->get_t_at_arc_length(dist);
-        double curvature = path->getCurvature(t);
-        double angular_vel = vel * curvature;
+        deriv = path->getDerivative(t);
+        derivSecond = path->getSecondDerivative(t);
+        t += dd / sqrt(deriv.x * deriv.x + deriv.y * deriv.y);
 
-        // double max_accel = this->constraints->max_acc - abs(angular_accel * this->constraints->track_width / 2);
-        double max_accel = linearProfile.get_accel_at_dist(dist);
-        double velSq = vel * vel + 2 * max_accel * dd;
-        if (velSq < 0)
-            break;
+        curvature = path->getCurvature(deriv, derivSecond);
+        angular_vel = vel * curvature;
+        angular_accel = (angular_vel - last_angular_vel) * (vel / dd);
+        last_angular_vel = angular_vel;
+
+        max_accel = this->constraints->max_acc - abs(angular_accel * this->constraints->track_width / 2);
         vel = std::min(this->constraints->maxSpeed(curvature), std::sqrt(vel * vel + 2 * max_accel * dd));
         dist += dd;
-        this->profile.push_back(ProfilePoint(dist, vel));
+        forwardPass.push_back(ProfilePoint(dist, vel));
     }
+
+    vel = 0.00001;
+    last_angular_vel = 0;
+    angular_accel = 0;
+    t = 1;
+
+    while (t >= 0)
+    {
+        deriv = path->getDerivative(t);
+        derivSecond = path->getSecondDerivative(t);
+
+        t -= dd / sqrt(deriv.x * deriv.x + deriv.y * deriv.y);
+        curvature = path->getCurvature(deriv, derivSecond);
+
+        angular_vel = vel * curvature;
+        angular_accel = (angular_vel - last_angular_vel) * (vel / dd);
+        last_angular_vel = angular_vel;
+
+        max_accel = this->constraints->max_dec - abs(angular_accel * this->constraints->track_width / 2);
+        vel = std::min(this->constraints->maxSpeed(curvature), std::sqrt(vel * vel + 2 * max_accel * dd));
+        dist -= dd;
+
+        backwardPass.push_back(ProfilePoint(dist, vel));
+        // std::cout << t << "," << dist << "," << vel << "," << curvature << std::endl;
+    }
+
+    // Get lower of the two velocities at each point and store in trajectory
+    for (int i = 0; i < backwardPass.size(); ++i)
+    {
+        this->profile.push_back(ProfilePoint(forwardPass[i].dist, std::min(forwardPass[i].vel, backwardPass[backwardPass.size() - i].vel)));
+    }
+    //? Removing this loop slows down code????
 }
 
 ChassisSpeeds ProfileGenerator::getProfilePoint(double d)
