@@ -101,7 +101,10 @@ double CubicBezier::getCurvature(double t)
 
 double CubicBezier::getCurvature(Point2D d, Point2D dd)
 {
-    double k = (d.x * dd.y - d.y * dd.x) / std::pow(d.x * d.x + d.y * d.y, 1.5);
+    double denominator = d.x * d.x + d.y * d.y;
+    denominator *= denominator * denominator;
+    denominator = std::sqrt(denominator);
+    double k = (d.x * dd.y - d.y * dd.x) / denominator;
     return k;
 }
 
@@ -135,7 +138,6 @@ double Constraints::maxSpeed(double curvature)
     double max_turn_speed = ((2 * this->max_vel / this->track_width) * this->max_vel) / (fabs(curvature) * this->max_vel + (2 * this->max_vel / this->track_width));
     if (curvature == 0)
         return max_turn_speed;
-    // double max_slip_speed = 100000000;
     double max_slip_speed = sqrt(this->friction_coef * (1 / abs(curvature)) * 9.81 * 39.3701);
     return std::min(max_slip_speed, max_turn_speed);
 }
@@ -200,10 +202,8 @@ void ProfileGenerator::generateProfile(virtualPath *path)
     double vel = 0.00001;
 
     std::vector<ProfilePoint> forwardPass;
-    std::vector<ProfilePoint> backwardPass;
 
     forwardPass.push_back(ProfilePoint(0, 0));
-    backwardPass.push_back(ProfilePoint(0, 0));
 
     double t = 0;
     double curvature;
@@ -213,13 +213,18 @@ void ProfileGenerator::generateProfile(virtualPath *path)
     double max_accel;
     Point2D deriv;
     Point2D derivSecond;
+
+    std::vector<double> cache;
+
     while (t <= 1)
     {
         deriv = path->getDerivative(t);
         derivSecond = path->getSecondDerivative(t);
+
         t += dd / sqrt(deriv.x * deriv.x + deriv.y * deriv.y);
 
         curvature = path->getCurvature(deriv, derivSecond);
+        cache.push_back(curvature);
         angular_vel = vel * curvature;
         angular_accel = (angular_vel - last_angular_vel) * (vel / dd);
         last_angular_vel = angular_vel;
@@ -234,14 +239,13 @@ void ProfileGenerator::generateProfile(virtualPath *path)
     last_angular_vel = 0;
     angular_accel = 0;
     t = 1;
+    int i = 0;
 
-    while (t >= 0)
+    while (dist >= 0)
     {
-        deriv = path->getDerivative(t);
-        derivSecond = path->getSecondDerivative(t);
 
-        t -= dd / sqrt(deriv.x * deriv.x + deriv.y * deriv.y);
-        curvature = path->getCurvature(deriv, derivSecond);
+        curvature = cache.back();
+        cache.pop_back();
 
         angular_vel = vel * curvature;
         angular_accel = (angular_vel - last_angular_vel) * (vel / dd);
@@ -251,15 +255,10 @@ void ProfileGenerator::generateProfile(virtualPath *path)
         vel = std::min(this->constraints->maxSpeed(curvature), std::sqrt(vel * vel + 2 * max_accel * dd));
         dist -= dd;
 
-        backwardPass.push_back(ProfilePoint(dist, vel));
-        // std::cout << t << "," << dist << "," << vel << "," << curvature << std::endl;
+        this->profile.push_back(ProfilePoint(forwardPass[i].dist, std::min(forwardPass[i].vel, vel)));
+        i++;
     }
-
-    // Get lower of the two velocities at each point and store in trajectory
-    for (int i = 0; i < backwardPass.size(); ++i)
-    {
-        this->profile.push_back(ProfilePoint(forwardPass[i].dist, std::min(forwardPass[i].vel, backwardPass[backwardPass.size() - i].vel)));
-    }
+    cache.clear();
     //? Removing this loop slows down code????
 }
 
