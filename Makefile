@@ -1,47 +1,37 @@
-################################################################################
-######################### User configurable parameters #########################
-# filename extensions
-CEXTS:=c
-ASMEXTS:=s S
-CXXEXTS:=cpp c++ cc
+# Compiler and flags
+CXX := g++
+CXXFLAGS := -Wall -Wextra -Iinclude -std=c++17
 
-# probably shouldn't modify these, but you may need them below
-ROOT=.
-FWDIR:=$(ROOT)/firmware
-BINDIR=$(ROOT)/bin
-SRCDIR=$(ROOT)/src
-INCDIR=$(ROOT)/include
+# Directories
+SRC_DIR := src
+INC_DIR := include
+BUILD_DIR := build
 
-WARNFLAGS+=
-EXTRA_CFLAGS=
-EXTRA_CXXFLAGS=
+# Files
+SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+OBJS := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRCS))
+TARGET := main
 
-# Set to 1 to enable hot/cold linking
-USE_PACKAGE:=1
+# Default target
+all: $(TARGET)
 
-# Add libraries you do not wish to include in the cold image here
-# EXCLUDE_COLD_LIBRARIES:= $(FWDIR)/your_library.a
-EXCLUDE_COLD_LIBRARIES:= 
+# Link objects into the final binary
+$(TARGET): $(OBJS)
+	$(CXX) $(OBJS) -o $@
 
-# Set this to 1 to add additional rules to compile your project as a PROS library template
-IS_LIBRARY:=0
-# TODO: CHANGE THIS! 
-# Be sure that your header files are in the include directory inside of a folder with the
-# same name as what you set LIBNAME to below.
-LIBNAME:=libbest
-VERSION:=1.0.0
-# EXCLUDE_SRC_FROM_LIB= $(SRCDIR)/unpublishedfile.c
-# this line excludes opcontrol.c and similar files
-EXCLUDE_SRC_FROM_LIB+=$(foreach file, $(SRCDIR)/main,$(foreach cext,$(CEXTS),$(file).$(cext)) $(foreach cxxext,$(CXXEXTS),$(file).$(cxxext)))
+# Compile each .cpp into .o inside build/
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# files that get distributed to every user (beyond your source archive) - add
-# whatever files you want here. This line is configured to add all header files
-# that are in the directory include/LIBNAME
-TEMPLATE_FILES=$(INCDIR)/$(LIBNAME)/*.h $(INCDIR)/$(LIBNAME)/*.hpp
+# Make sure build directory exists
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-.DEFAULT_GOAL=quick
+# Clean up
+clean:
+	rm -rf $(BUILD_DIR) $(TARGET)
 
-################################################################################
-################################################################################
-########## Nothing below this line should be edited by typical users ###########
--include ./common.mk
+# Rebuild everything
+rebuild: clean all
+
+.PHONY: all clean rebuild
