@@ -1,7 +1,7 @@
 #include "kinematics.hpp"
 #include "pose.hpp"
 
-double DifferentialKinematics::getMaxSpeed(Path *path, Pose curPose,
+double DifferentialKinematics::getMaxSpeed(Path *path, Pose lastPose, double deltaD,
                                            double t) const {
   Point2D derivative = path->getDerivative(t);
   Point2D secondDerivative = path->getSecondDerivative(t);
@@ -18,7 +18,9 @@ double DifferentialKinematics::getMaxSpeed(Path *path, Pose curPose,
 
   double maxSpeedFriction = sqrt(friction * maxAccel / (fabs(curvature)));
 
-  return std::min({maxSpeedCurvature, maxSpeedFriction, this->maxVel});
+  double maxSpeedAccel = sqrt(lastPose.velocity * lastPose.velocity +
+                              2 * maxAccel * deltaD);
+  return std::min({maxSpeedCurvature, maxSpeedFriction, maxSpeedAccel, this->maxVel});
 }
 
 std::vector<double>
