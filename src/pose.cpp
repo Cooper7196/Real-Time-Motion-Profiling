@@ -1,24 +1,6 @@
 #include "pose.hpp"
 #include <math.h>
 
-Pose::Pose()
-{
-    this->x = 0;
-    this->y = 0;
-    this->theta = 0;
-}
-Pose::Pose(double x, double y, double theta)
-{
-    this->x = x;
-    this->y = y;
-    this->theta = theta;
-}
-Pose::Pose(double x, double y)
-{
-    this->x = x;
-    this->y = y;
-    this->theta = 0;
-}
 double Pose::distance(Pose pose)
 {
     return sqrt(pow(pose.x - this->x, 2) + pow(pose.y - this->y, 2));
