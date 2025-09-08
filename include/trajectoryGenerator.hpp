@@ -4,10 +4,11 @@
 
 #include <vector>
 
-class TrajectoryGenerator {
+class TrajectoryGenerator
+{
 public:
   TrajectoryGenerator(Kinematics *kinematics, double deltaD)
-      : kinematics(kinematics), deltaD(deltaD){};
+      : kinematics(kinematics), deltaD(deltaD) {};
   void generateTrajectory(Path *path);
   std::vector<Pose> getTrajectory();
 

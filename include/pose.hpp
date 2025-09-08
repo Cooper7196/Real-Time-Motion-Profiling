@@ -1,6 +1,7 @@
 #pragma once
 
-class Pose {
+class Pose
+{
 public:
   Pose();
   Pose(double x, double y) : x(x), y(y), theta(0), velocity(0), angularVelocity(0) {};
@@ -16,7 +17,8 @@ public:
   double angularVelocity;
 };
 
-class Point2D {
+class Point2D
+{
 public:
   Point2D() : x(0), y(0) {}
   Point2D(double x, double y) : x(x), y(y) {}

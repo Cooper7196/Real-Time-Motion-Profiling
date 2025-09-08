@@ -2,7 +2,8 @@
 #include "path.hpp"
 #include <vector>
 
-class Kinematics {
+class Kinematics
+{
 public:
   virtual double getMaxSpeed(Path *path, Pose lastPose, double deltaD, double t) const = 0;
   virtual std::vector<double> getWheelVelocities(double linearVel,
@@ -10,7 +11,8 @@ public:
   virtual ~Kinematics() = default;
 };
 
-class DifferentialKinematics : public Kinematics {
+class DifferentialKinematics : public Kinematics
+{
 public:
   DifferentialKinematics(double trackWidth, double maxVel, double maxAccel,
                          double friction)

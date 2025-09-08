@@ -10,10 +10,7 @@ double DifferentialKinematics::getMaxSpeed(Path *path, Pose lastPose, double del
       (derivative.x * secondDerivative.y - derivative.y * secondDerivative.x) /
       pow(derivative.x * derivative.x + derivative.y * derivative.y, 1.5);
 
-  if (curvature == 0) {
-    return maxVel;
-  }
-
+      
   double maxSpeedCurvature = 2 * maxVel / (2 + trackWidth * fabs(curvature));
 
   double maxSpeedFriction = sqrt(friction * maxAccel / (fabs(curvature)));

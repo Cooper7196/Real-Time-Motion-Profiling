@@ -4,8 +4,8 @@
 #include "pose.hpp"
 #include <vector>
 
-
-class Path {
+class Path
+{
 public:
   virtual Point2D getPoint(double t) = 0;
   virtual Point2D getDerivative(double t) = 0;
@@ -14,7 +14,8 @@ public:
   virtual ~Path() = default;
 };
 
-class CubicBezier : public Path {
+class CubicBezier : public Path
+{
 public:
   CubicBezier(Point2D p0, Point2D p1, Point2D p2, Point2D p3);
   Point2D getPoint(double t) override;
@@ -30,11 +31,14 @@ private:
   Eigen::Matrix<double, 2, 4> secondDerivativeCoefficients;
 };
 
-class MultiPath : public Path {
+class MultiPath : public Path
+{
 public:
-  MultiPath(std::vector<Path *> paths) : paths(paths){};
-  MultiPath(std::initializer_list<Path *> paths) {
-    for (auto p : paths) {
+  MultiPath(std::vector<Path *> paths) : paths(paths) {};
+  MultiPath(std::initializer_list<Path *> paths)
+  {
+    for (auto p : paths)
+    {
       this->paths.push_back(p);
     }
   };
